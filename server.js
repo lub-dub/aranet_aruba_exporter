@@ -3,6 +3,9 @@ const BarnowlAruba = require('barnowl-aruba');
 const Parser = require("binary-parser").Parser;
 const client = require('prom-client');
 const express = require('express');
+const fs = require('fs');
+
+
 let barnowl = new Barnowl({ enableMixing: true });
 const { isMainThread, threadId } = require('node:worker_threads');
 const registry = new client.Registry();
@@ -13,7 +16,9 @@ const counter = new client.Summary({
   maxAgeSeconds: 1800,
   labelNames: ['ap_name'],
   registers: [registry],
-  buckets: client.linearBuckets(400, 20, 100), //Create 20 buckets, starting on 0 and a width of 10
+  pruneAgedBuckets: true,
+  ageBuckets: 10,
+
 });
 
 const server = express();
@@ -41,7 +46,29 @@ const aranet = new Parser()
 
 
 
-const aps = require('./aps.json');
+var aps = {};
+
+fs.readFile('aps.json', 'utf8',
+  (err, data) => {
+     if (err) {
+       console.error(err);
+       return;
+  }
+  aps = JSON.parse(data);
+  });
+
+fs.watch("./aps.json", (eventType, filename) => {
+fs.readFile('aps.json', 'utf8',
+  (err, data) => {
+     if (err) {
+       console.error(err);
+       return;
+  }
+  aps = JSON.parse(data);
+  });
+});
+
+
 
 barnowl.addListener(BarnowlAruba, {}, BarnowlAruba.WsListener, { port: 3001 });
 //barnowl.addListener(BarnowlAruba, {}, BarnowlAruba.TestListener, {});
